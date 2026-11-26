@@ -1,17 +1,36 @@
 stations:
-  - name: "Clapham Junction"
-    id: "STATION^2156"
-  - name: "Balham"
-    id: "STATION^506"
+  - name: "Raynes Park"
+    id: "STATION^7607"
+  - name: "New Malden"
+    id: "STATION^6566"
+  - name: "Wimbledon"
+    id: "STATION^10127"
+  - name: "Hammersmith"
+    id: "STATION^4172"
+  - name: "Ravenscourt Park"
+    id: "STATION^7589"
+  - name: "Stamford Brook"
+    id: "STATION^8672"
+  - name: "Turnham Green"
+    id: "STATION^9356"
+  - name: "Chiswick Park"
+    id: "STATION^2084"
+  - name: "South Ealing"
+    id: "STATION^8390"
+  - name: "Ealing Broadway"
+    id: "STATION^3023"
+  - name: "North Ealing"
+    id: "STATION^6716"
 
 filters:
   radius: 0.5
-  min_price: 400000
-  max_price: 700000
+  min_price: 800000
+  max_price: 1250000
   property_types:
-    - flat
+    - detached
+    - semi-detached
     - terraced
-  max_days_since_added: 7
+  max_days_since_added: 7  # strict recent-listing window: last 7 days
   min_bedrooms: 1
   max_bedrooms: 3
 

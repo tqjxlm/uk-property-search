@@ -1,79 +1,93 @@
-# AGENTS.md
+# Agent instructions
 
-Instructions for AI coding agents. This project scrapes Rightmove for-sale listings around
-chosen stations and builds a single static HTML report in `site/`. It needs no credentials,
-API keys or accounts. Deploying `site/` is left to whatever static hosting you have access to.
+This project searches Rightmove for-sale listings and builds a static report in `site/`.
+Take a requested search through configuration, build, publication and verification using
+the hosting tools available to you. Searching requires no credentials or accounts.
 
-## Setup
+## First use and configuration
 
-Requires Python 3.11–3.14 and a POSIX shell. Python 3.15 is not supported: Camoufox's
-fingerprint generator fails with `binascii.Error: Incomplete Base85 group`. If `python3`
-is 3.15, use `python3.14` or `uv venv` (which reads `.python-version`).
+When a user uses this project for the first time, ask questions to establish their
+requirements before creating a customized `search_config.yaml` from
+`search_config.example.yaml`. The example's values are a starting template, not evidence
+of the user's preferences.
 
-```bash
-python3 -m venv .venv
-.venv/bin/pip install -r requirements.txt
-.venv/bin/python -m camoufox fetch   # downloads the stealth Firefox binary; pip alone is not enough
-```
+Use requirements already provided in the request or conversation and ask only for missing
+information:
 
-## Configure
+- Locations or stations and search radius.
+- Minimum and maximum price.
+- Property types and bedroom range.
+- Date window and whether they want a full report or an update since the previous report.
+- Hosting preference and audience, if needed to complete publication.
 
-`search_config.yaml` is the user's local config and is gitignored. If it does not exist,
-copy `search_config.example.yaml` and edit it with the user's requirements. Ask them for
-locations, price range, property types, bedrooms and how many days back to look.
+`search_config.yaml` is gitignored. Preserve an existing local config and reuse it unless
+the user requests changes. Do not overwrite it with the example. Update the example only
+when requested; neither file automatically synchronizes with the other.
 
-Location IDs (`STATION^2156`, `REGION^85434`, ...) come from Rightmove's autocomplete
-endpoint. Each match's identifier is `<type>^<id>`:
+Resolve and verify location IDs with Rightmove's autocomplete endpoint. Configuration
+keys are documented in the [`rightmove_search.py` module docstring](rightmove_search.py);
+see [configuration details](docs/technical.md#configuration) for the lookup command.
 
-```bash
-curl -s -A "Mozilla/5.0" "https://los.rightmove.co.uk/typeahead?query=clapham%20junction&limit=10&exclude=STREET"
-```
+## Choose the report mode
 
-Filter keys are documented in the `rightmove_search.py` module docstring. `property_types`
-accepts `detached`, `semi-detached`, `terraced`, `flat`.
+- **Full date-window report**, such as “properties in the last 30 days”: include all current
+  matches added or repriced within that window. Use a new empty output directory and the
+  [full-report workflow](docs/technical.md#full-date-window-report) so previous CSVs do not
+  suppress matches. Preserve existing history unless the user authorizes its removal.
+- **Update since the last report**: identify the source CSV of the report the user wants
+  to update and reuse its output directory and baseline. A full report in an isolated
+  directory has a separate baseline from the standard `results/` workflow. Ensure the
+  configured date window covers the time since the previous update. The code
+  compares IDs and prices against only the newest CSV, not cumulative history or an
+  automatically tracked update timestamp. Explain this limitation when it affects the
+  requested result; see [comparison behavior](docs/technical.md#search-history-and-comparison).
+
+For windows above 14 days, the scraper crawls broader results and filters listing dates
+locally. Allow for longer searches and note any skipped unknown dates in the logs.
 
 ## Build
+
+Follow the [setup instructions](docs/technical.md#setup), then run:
 
 ```bash
 ./build_site.sh
 ```
 
-This runs the search, generates the report and writes `site/index.html`. It takes several
-minutes because the scraper uses human-like delays. Don't lower them, or Rightmove starts
-blocking requests.
+The standard build reads `search_config.yaml` and expects CSV output in `results/`.
+For another config or output directory, run the search explicitly and pass its CSV to
+the build script as shown in the technical guide. Do not invent unsupported CLI flags.
 
-| Exit code | Meaning |
+The scraper uses human-like pacing. Do not lower its delays to speed up a search.
+Monitor station failures and enrichment errors, and distinguish partial results from a
+complete search. If a sandbox prevents Camoufox from launching, use the environment's
+permission mechanism rather than changing scraper behavior.
+
+| Exit code | Action |
 | --- | --- |
-| 0 | `site/index.html` built |
-| 2 | Nothing new since the last run; `site/` left as it was |
-| 1 | Error, including every station search failing |
+| 0 | Verify the new report and proceed with requested publication. |
+| 2 | No new or repriced listings; the existing site is unchanged. Do not describe it as a freshly generated report. |
+| 1 | Diagnose the error, including the case where every station search fails. |
 
-Each run reports only listings that are **new or re-priced** since the previous CSV in
-`results/`. The first run reports everything that matches. Keep `results/` between runs,
-or every run will look like a first run.
+`./build_site.sh --refresh` refetches listing details; it does not reset search history.
 
-`./build_site.sh --csv results/<file>.csv` rebuilds the site from an existing CSV without
-searching again.
+## Publish and verify
 
-## Deploy
+When publication is requested, publish the completed `site/` with an available static
+hosting tool. Reuse an identified existing deployment and preserve its audience. For a
+new deployment, prefer private or unlisted access unless the user requests otherwise.
+Complete authorized publication without adding a separate conversational approval gate.
 
-`site/` is a self-contained static site with one `index.html` and no build step. Publish
-it with any static host you can use, for example Netlify (`netlify deploy --dir site --prod`),
-Vercel (`vercel deploy site --prod`), Cloudflare Pages (`wrangler pages deploy site`),
-GitHub Pages, S3, or your own platform's publishing tool.
+Before reporting success:
 
-At view time the page loads listing images from Rightmove's CDN, Leaflet from `unpkg.com`,
-and map tiles from `tile.openstreetmap.org`. A host that enforces a strict CSP must allow
-those origins.
+1. Check the report's source CSV, generation time, property count and any search or
+   enrichment failures against the requested configuration.
+2. Confirm deployment succeeded and return its actual URL.
+3. Check the deployed content policy and verify external photos, overview-map tiles and
+   markers, and a per-property embedded map. Scroll to trigger lazy images and click both
+   map load controls. Follow the [deployment checks](docs/technical.md#deployment-and-external-content).
 
-The report contains Rightmove listing content and reveals what the user is searching for.
-Prefer a private or unlisted deployment unless the user asks otherwise.
+Private sites may require sign-in for direct browser checks. Do not make a site public
+to simplify testing. State what was verified and any remaining verification limits.
 
-## Troubleshooting
-
-- **Zero results for a station**: the location ID may be wrong, or Rightmove served a
-  block or CAPTCHA page, which the scraper can't detect. Re-check the ID with the
-  autocomplete endpoint and retry later.
-- **Cards with no images or an extraction error**: Rightmove changed its listing-page
-  data (`window.PAGE_MODEL` / `__PAGE_MODEL`), or the listing was removed.
-- More verbose logs: `.venv/bin/python rightmove_search.py --log-level DEBUG`.
+Use the [technical troubleshooting guidance](docs/technical.md#troubleshooting) for empty
+results, browser failures, extraction errors and diagnostic logging.

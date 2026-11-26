@@ -1,65 +1,56 @@
 # property_search
 
-Scrape Rightmove for-sale listings around the stations you choose, then publish a browsable
-static report with photos, floorplans, key features and an overview map.
+Find Rightmove properties for sale around your chosen stations and publish a browsable
+report with photos, floorplans, descriptions and interactive maps.
 
-It needs no credentials, API keys or accounts. The output is one self-contained
-`site/index.html` that any static host can serve.
+## Usage
 
-## Use it with an AI agent
+Prefer using this project with an AI coding agent, preferably ChatGPT with access to the
+repository and a publishing tool. Give the agent this repository and describe the report
+you want. Other coding agents can use the same [agent instructions](AGENTS.md).
 
-Point your coding agent (Claude Code, Codex, Cursor, Gemini CLI, ...) at this repository and
-ask something like:
+Two typical requests are:
 
-> Set up this project, search for 2–3 bed houses under £700k near Clapham Junction and
-> Balham, and deploy the report.
+> Generate a report for properties in the last 30 days and publish it.
 
-[`AGENTS.md`](AGENTS.md) tells the agent how to install the project, look up location IDs,
-build the site, and deploy `site/` with whatever hosting platform it can use.
+This produces a full report of matching listings added or repriced during that window.
 
-## Use it by hand
+> Generate a report for properties since the last update and publish it.
 
-Requires Python 3.11–3.14; Camoufox doesn't work on 3.15 yet.
+This produces an incremental report using the previous CSV. Keep your search history
+between updates. Comparison is against the most recent CSV within the configured search
+window, rather than a complete record of all past listings.
 
-```bash
-python3 -m venv .venv
-.venv/bin/pip install -r requirements.txt
-.venv/bin/python -m camoufox fetch
-cp search_config.example.yaml search_config.yaml   # then edit
-./build_site.sh
-```
+On first use, the agent asks about locations, budget, property types, bedrooms and search
+window, then creates a customized local configuration from the template. You can also
+provide these requirements in your initial request.
 
-Open `site/index.html` in a browser, or upload the `site/` folder to any static host.
+For manual setup and commands, see the [technical guide](docs/technical.md).
 
-### How it works
+## Expected results
 
-1. `rightmove_search.py` runs each station search in Camoufox, a fingerprint-resistant
-   Firefox, with human-like pacing. It writes `results/rightmove_<timestamp>.csv` containing
-   only the listings that are new or re-priced since the previous CSV.
-2. `generate_report.py` fetches each listing page for images, floorplans, description,
-   features and coordinates. It caches them in `results/<name>.enriched.json` and renders
-   `results/<name>.html`.
-3. `build_site.sh` chains the two scripts and copies the report to `site/index.html`.
-   Run `./build_site.sh --help` for options.
+- A CSV of matching properties and a report in `site/index.html`, ready for static hosting.
+- Listing photos, floorplans, key features and maps where Rightmove provides them.
+- A published URL when you ask the agent to publish and it has access to a suitable host.
+  Prefer private or unlisted hosting because the report reveals your search criteria.
+- If an incremental search finds nothing new or repriced, the existing report stays unchanged.
 
-### Finding location IDs
+Searching needs no credentials, API keys or accounts. Images and maps require internet
+access, and private hosting may require sign-in. Searches take several minutes; wider
+date ranges can take longer. Only for-sale searches are supported.
 
-```bash
-curl -s -A "Mozilla/5.0" "https://los.rightmove.co.uk/typeahead?query=balham&limit=10&exclude=STREET"
-```
+## Troubleshooting
 
-Join each match's `type` and `id` with `^`, for example `STATION^506`, and use that as the
-station `id` in `search_config.yaml`.
+| Problem | What to check |
+| --- | --- |
+| No properties returned | Check your criteria and locations. Rightmove blocking or page changes can also cause empty results. |
+| The report still shows an earlier run | An incremental search may have found no changes. Check the source CSV and generation time shown in the report. |
+| Photos or maps do not appear | Check internet access and the host's external-content policy. Click the map's load button to open it. |
+| Setup or browser launch fails | Use a supported Python version and install the scraper's browser. |
 
-## Limitations
-
-- Scraping depends on Rightmove's current page structure (`data-testid` selectors and the
-  embedded `PAGE_MODEL` JSON). If Rightmove redesigns its site, results can come back empty
-  without any error.
-- Block or CAPTCHA pages aren't detected; a station that is blocked just returns zero
-  results.
-- Only for-sale searches are supported, not rentals.
-- The report hotlinks images from Rightmove instead of downloading them.
+See the [technical guide](docs/technical.md) for setup, history handling and deployment
+checks. Scraping depends on Rightmove's current site structure, and block or CAPTCHA
+pages are not reliably detected.
 
 ## Disclaimer
 
