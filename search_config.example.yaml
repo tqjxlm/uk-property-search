@@ -1,0 +1,20 @@
+stations:
+  - name: "Clapham Junction"
+    id: "STATION^2156"
+  - name: "Balham"
+    id: "STATION^506"
+
+filters:
+  radius: 0.5
+  min_price: 400000
+  max_price: 700000
+  property_types:
+    - flat
+    - terraced
+  max_days_since_added: 7
+  min_bedrooms: 1
+  max_bedrooms: 3
+
+output:
+  directory: "results"
+  deduplicate: true

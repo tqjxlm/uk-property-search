@@ -1,0 +1,6 @@
+.venv/
+__pycache__/
+storage/
+results/
+site/
+search_config.yaml
